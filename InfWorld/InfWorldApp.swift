@@ -11,7 +11,7 @@ import SwiftUI
 struct InfWorldApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MenuView()
         }
     }
 }

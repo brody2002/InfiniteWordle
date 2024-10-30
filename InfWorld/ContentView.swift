@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import StoreKit
+
 
 struct ColorStringPair: Hashable {
     let text: String
@@ -90,6 +92,11 @@ class GridViewClass: ObservableObject{
                 print("enter")
                 showWinScreen = true
             }
+            print("attempt number: \(attempt)")
+            if attempt == 5 && inputWord != answerWord {
+                print("LOSE SCREEEN SHOW")
+                showLoseScreen = true
+            }
         }
     }
     
@@ -101,7 +108,7 @@ class GridViewClass: ObservableObject{
             case 3: row3 = row
             case 4: row4 = row
             case 5: row5 = row
-            default: fatalError("Not on Valid Attempt Number! No Row Replaced")
+            default: print("Not on Valid Attempt Number! No Row Replaced")
         }
     }
     
@@ -136,9 +143,7 @@ class GridViewClass: ObservableObject{
                 case 5:
                     row5 = inputList
                     print("row5 was swapped into \(row5)")
-                    if inputWord != answerWord {
-                        showLoseScreen = true
-                    }
+                    
                         
                 default:
                     fatalError("Not on Valid Attempt Number! No Row Replaced")
@@ -161,6 +166,7 @@ class GridViewClass: ObservableObject{
             inputWord = ""
             attempt = 1
             showWinScreen = false
+            showLoseScreen = false
             keyColors = [:]
             answerWord = validWordsSet.randomElement()?.uppercased() ?? "POWER"
             print("New answer word: \(answerWord)")
@@ -334,6 +340,13 @@ struct HeaderBar: View{
     
     @ObservedObject var gridViewClass: GridViewClass
     
+    func restart(){
+        gridViewClass.resetGame()
+        showWinScreen = false
+        showLoseScreen = false
+        answerWord = gridViewClass.answerWord
+    }
+    //showWinScreen || showLoseScreen
     var body: some View{
         ZStack{
             Color.blue.ignoresSafeArea()
@@ -342,12 +355,40 @@ struct HeaderBar: View{
                 if !isKeyboardVisible{
                     VStack{
                         Spacer(minLength: 40)
-                        HStack{
-                            Text("Brody Wordle")
-                                .bold()
-                                .foregroundStyle(Color.white)
-                                .font(.largeTitle)
+                        
+                        ZStack{
+                            HStack{
+                                
+                                Spacer()
+                                Text("Brody Wordle")
+                                    .bold()
+                                    .foregroundStyle(Color.white)
+                                    .font(.largeTitle)
+                                Spacer()
+                            }
+                            HStack{
+                                Button(
+                                    action: {
+                                        restart()
+                                        
+                                    },
+                                    label: {
+                                        Image("Cycle")
+                                            .resizable()
+                                            .renderingMode(.template)
+                                            .foregroundColor(.white)
+                                            .frame(width: 20, height: 20)
+                                            .padding(.leading, 30)
+                                    })
+                                .opacity(showWinScreen || showLoseScreen ? 0 : 1)
+                                
+                                Spacer()
+                                Spacer()
+                                Spacer()
+                                Spacer()
+                            }
                         }
+                        
                         Spacer(minLength: 20)
                     }
                 }
@@ -390,7 +431,6 @@ struct HeaderBar: View{
                                         }
                                 //swap rows here
                                 gridViewClass.visualRowChange(row: rowToInsert)
-                                
                             }
                             .padding(.top, 10)
                             .shadow(radius: 3)
@@ -399,11 +439,7 @@ struct HeaderBar: View{
                     }
                     if showWinScreen || showLoseScreen{
                         Button("Restart: "){
-                            gridViewClass.resetGame()
-                            showWinScreen = false
-                            showLoseScreen = false
-                            answerWord = gridViewClass.answerWord
-                            
+                            restart()
                             
                         }
                             .frame(width: 100, height: 20)
@@ -413,23 +449,14 @@ struct HeaderBar: View{
                             .cornerRadius(30)
                             .multilineTextAlignment(.leading)
                             .padding(.horizontal)
-                            
                     }
-                    
-                        
                 }
                 Spacer()
                     .frame(height: 15)
-                
             }
         }
         .frame( height: 70)
-        
-            
     }
-    
-    
-    
     
     func spellCheck(word: String) -> Bool {
         let wordLower = word.uppercased()
@@ -459,14 +486,16 @@ struct HeaderBar: View{
     func inputGuess() {
         // Updates word
         
-        guard spellCheck(word: inputWord) else {
-            wordError(title: "Word not recognized", message: "Word doesn't exist!")
-            return
-        }
         guard charCheck(word: inputWord) else{
             wordError(title: "Word not long enough", message: "The word must be 5 characters!")
             return
         }
+        
+        guard spellCheck(word: inputWord) else {
+            wordError(title: "Word not recognized", message: "Word doesn't exist!")
+            return
+        }
+        
         
         
         // main actions occur here:
@@ -476,7 +505,7 @@ struct HeaderBar: View{
         gridViewClass.swapRows()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3){
             withAnimation(.spring(response: 0.6, dampingFraction: 1.2)){
-                if !showWinScreen{
+                if !showWinScreen || !showLoseScreen{
                     gridViewClass.attempt += 1
                 } else {
                     gridViewClass.attempt = 0
@@ -518,7 +547,10 @@ struct VisualKeyboard: View{
         }
     }
 
-
+    func triggerHapticFeedback() {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+            impactFeedback.impactOccurred() // Perform the feedback
+        }
     
     var body: some View{
         VStack(spacing: -10){
@@ -534,11 +566,10 @@ struct VisualKeyboard: View{
                         KeyboardSquare(inputChar: char, inputColor: inDict(char), inputSize: squareSize)
                             .frame(width: squareSize * 1.2, height: squareSize * 2)
                             .onTapGesture {
+                                triggerHapticFeedback()
                                 inputWord += String(char)
                             }
-                            .onChange(of: gridViewClass.keyColors){
-                                print("dictionary changed")
-                            }
+
                     }
                     
                     
@@ -551,6 +582,7 @@ struct VisualKeyboard: View{
                     KeyboardSquare(inputChar: char, inputColor: inDict(char), inputSize: squareSize)
                         .frame(width: squareSize * 1.2, height: squareSize * 2)
                         .onTapGesture {
+                            triggerHapticFeedback()
                             inputWord += String(char)
                         }
 
@@ -564,8 +596,9 @@ struct VisualKeyboard: View{
                     KeyboardSquare(inputChar: char, inputColor: inDict(char), inputSize: squareSize)
                         .frame(width: squareSize * 1.2, height: squareSize * 2)
                         .onTapGesture {
+                            triggerHapticFeedback()
                             inputWord += String(char)
-                        }
+                                                    }
 
                 }.id(gridViewClass.keyColors)
                 ZStack{
@@ -582,7 +615,9 @@ struct VisualKeyboard: View{
                 }
                 .onTapGesture {
                     if inputWord.count >= 1{
+                        triggerHapticFeedback()
                         inputWord.removeLast()
+                        
                     }
                     
                 }
@@ -597,6 +632,7 @@ struct VisualKeyboard: View{
 
 
 struct ContentView: View {
+    @Environment(\.requestReview) var requestReview
     
     @State var attempt: Int = 1
     @State var inputWord: String = ""
@@ -607,11 +643,18 @@ struct ContentView: View {
     @State var showLoseScreen:Bool = false
     @State var keyColors: [String: Color] = [:]
     @State private var restartID = UUID()
+    @State var reviewCount: Int = 0
     
-
+    func handleReview(){
+        reviewCount += 1
+        if reviewCount == 3 {
+            requestReview()
+            reviewCount = 0
+        }
+    }
     
     var body: some View {
-        NavigationStack{
+        
             ZStack{
                 Color.white.ignoresSafeArea()
                 VStack{
@@ -639,6 +682,10 @@ struct ContentView: View {
                         .bold()
                         .foregroundStyle(.white)
                         .padding()
+                        .onAppear{
+                            handleReview()
+                        }
+                   
                 }
                 if showLoseScreen{
                     Text("YOU LOST!\nThe Word was\n\(answerWord)")
@@ -650,7 +697,13 @@ struct ContentView: View {
                         .bold()
                         .foregroundStyle(.white)
                         .padding()
+                        .onAppear{
+                            handleReview()
+                        }
+                    
                 }
+                
+                
             }
             .onAppear{
                 answerWord = gridViewClass.answerWord
@@ -670,7 +723,7 @@ struct ContentView: View {
             }
             //restart game on change? i think...
             .id(restartID)
-        }
+        
     }
     
     
