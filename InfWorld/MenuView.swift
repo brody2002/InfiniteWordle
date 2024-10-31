@@ -20,7 +20,7 @@ struct MenuView: View {
                         
                     }
                     Spacer()
-                    Text("Brody Worlde")
+                    Text("Infinite Worlde")
                         .foregroundColor(.white)
                         .font(.system(size: 50))
                         .bold()

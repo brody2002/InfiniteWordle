@@ -5,6 +5,7 @@
 //  Created by Brody on 10/16/24.
 //
 
+import AVFoundation
 import SwiftUI
 import StoreKit
 
@@ -18,6 +19,21 @@ struct ColorStringPair: Hashable {
 private var validWordsSet: Set<String> = []
 private var screenHeight = UIScreen.main.bounds.height
 private var screenWidth = UIScreen.main.bounds.width
+private var audioPlayer: AVAudioPlayer?
+
+func playAudio(_ inputString: String) {
+    if let url = Bundle.main.url(forResource: inputString, withExtension: "mp3") {
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.play()
+            print("Audio Playing")
+        } catch {
+            print("Couldn't play Audio")
+        }
+    } else {
+        print("Can't Find File")
+    }
+}
 
 
 func loadDictionary() {
@@ -28,9 +44,6 @@ func loadDictionary() {
         }
     }
 }
-
-
-
 
 class GridViewClass: ObservableObject{
     
@@ -99,6 +112,7 @@ class GridViewClass: ObservableObject{
             }
         }
     }
+    
     
     func visualRowChange(row: [ColorStringPair]){
         objectWillChange.send()
@@ -337,8 +351,12 @@ struct HeaderBar: View{
 
     @State var rowToMod: Int = 0
     @State var rowToInsert = Array(repeating: ColorStringPair(text: "?", color: .gray), count: 5)
+
     
     @ObservedObject var gridViewClass: GridViewClass
+    
+    
+    
     
     func restart(){
         gridViewClass.resetGame()
@@ -346,7 +364,10 @@ struct HeaderBar: View{
         showLoseScreen = false
         answerWord = gridViewClass.answerWord
     }
-    //showWinScreen || showLoseScreen
+    
+    
+    
+    
     var body: some View{
         ZStack{
             Color.blue.ignoresSafeArea()
@@ -360,7 +381,7 @@ struct HeaderBar: View{
                             HStack{
                                 
                                 Spacer()
-                                Text("Brody Wordle")
+                                Text("Infinite Wordle")
                                     .bold()
                                     .foregroundStyle(Color.white)
                                     .font(.largeTitle)
@@ -535,6 +556,10 @@ struct VisualKeyboard: View{
     let squareSize = screenWidth/15
     
     
+    
+     var bubbleSoundList: [String] = ["BubbleSound1", "BubbleSound2", "BubbleSound3", "BubbleSound4"]
+    
+    
     @ObservedObject var gridViewClass: GridViewClass
     @Binding var inputWord: String
     @State var answerWord: String
@@ -568,6 +593,10 @@ struct VisualKeyboard: View{
                             .onTapGesture {
                                 triggerHapticFeedback()
                                 inputWord += String(char)
+                                if inputWord.count < 6{
+                                    playAudio(bubbleSoundList.randomElement()!)
+                                }
+                                
                             }
 
                     }
@@ -584,6 +613,9 @@ struct VisualKeyboard: View{
                         .onTapGesture {
                             triggerHapticFeedback()
                             inputWord += String(char)
+                            if inputWord.count < 6{
+                                playAudio(bubbleSoundList.randomElement()!)
+                            }
                         }
 
                 }
@@ -598,7 +630,10 @@ struct VisualKeyboard: View{
                         .onTapGesture {
                             triggerHapticFeedback()
                             inputWord += String(char)
-                                                    }
+                            if inputWord.count < 6{
+                                playAudio(bubbleSoundList.randomElement()!)
+                            }
+                        }
 
                 }.id(gridViewClass.keyColors)
                 ZStack{
@@ -614,9 +649,10 @@ struct VisualKeyboard: View{
                         .foregroundStyle(.white)
                 }
                 .onTapGesture {
-                    if inputWord.count >= 1{
+                    if inputWord.count >= 1 {
                         triggerHapticFeedback()
                         inputWord.removeLast()
+                        playAudio("BackBubble")
                         
                     }
                     
@@ -683,8 +719,10 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                         .padding()
                         .onAppear{
+                            playAudio("win")
                             handleReview()
                         }
+                    
                    
                 }
                 if showLoseScreen{
@@ -698,6 +736,7 @@ struct ContentView: View {
                         .foregroundStyle(.white)
                         .padding()
                         .onAppear{
+                            playAudio("lose")
                             handleReview()
                         }
                     
